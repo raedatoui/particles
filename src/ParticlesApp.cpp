@@ -43,6 +43,8 @@ public:
   void setup() override;
   void update() override;
   void draw() override;
+  void keyDown( KeyEvent event );
+  
 private:
   gl::GlslProgRef mRenderProg;
   gl::GlslProgRef mUpdateProg;
@@ -61,26 +63,17 @@ private:
   bool      mMouseDown = false;
   float     mMouseForce = 0.0f;
   vec3      mMousePos = vec3( 0, 0, 0 );
-  int       GRID_SIZE = 10;
   int       NUM_PARTICLES = 0;
-  gl::Texture2dRef		mTex;
   Surface32f		mImage;
+  vector<Particle> particles;
+  float pointSize = 1.0f;
 };
 
 
 void ParticlesApp::setup()
 {
-  // Create initial particle layout.
-// How many particles to create. (600k default)
-
-//  GRID_SIZE = 734;
-//
-//  NUM_PARTICLES = GRID_SIZE * GRID_SIZE;
 
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
-//  mTex = gl::Texture2d::create( img );
-//  mTex->bind( 0 );
-
 
   
   Surface32f::Iter pixelIter = mImage.getIter();
@@ -88,7 +81,9 @@ void ParticlesApp::setup()
   uint32_t mHeight = mImage.getHeight();
   
   NUM_PARTICLES = mWidth * mHeight;
-  vector<Particle> particles;
+
+  // Create initial particle layout.
+  // How many particles to create. (600k default)
   particles.assign( NUM_PARTICLES, Particle() );
   
   
@@ -109,24 +104,6 @@ void ParticlesApp::setup()
     j = 0;
   }
   
-//  for( int i = 0; i < GRID_SIZE; ++i )
-//  {
-//    for( int j = 0; j < GRID_SIZE; ++j ) {
-//      auto &p = particles.at( i*GRID_SIZE+j );
-//      // assign starting values to particles.
-//      // float x = radius * sin( inclination * i*j ) * cos( azimuth * i*j );
-//      // float y = radius * cos( inclination * i*j );
-//      // float z = radius * sin( inclination * i*j ) * sin( azimuth * i*j );
-//
-//      p.pos = vec3( i+1, j+1, 0 );
-//      p.pixel = vec2(i,j);
-//      p.home = p.pos;
-//      p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
-//      p.damping = 0.0f; //Rand::randFloat( 0.965f, 0.985f );
-//      p.color = Color( CM_RGB, 239.0f/255.0f, 3.0f/255.0f, 137.0f/255.0f);
-//    }
-//  }
-
   // Create particle buffers on GPU and copy data into the first buffer.
   // Mark as static since we only write from the CPU once.
   mParticleBuffer[mSourceIndex] = gl::Vbo::create( GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), particles.data(), GL_STATIC_DRAW );
@@ -157,7 +134,7 @@ void ParticlesApp::setup()
   // Load our update program.
   // Match up our attribute locations with the description we gave.
 
-//    mRenderProg = gl::getStockShader( gl::ShaderDef().color() );
+//  mRenderProg = gl::getStockShader( gl::ShaderDef().color() );
     mRenderProg = gl::GlslProg::create( gl::GlslProg::Format()
                   .vertex( loadAsset( "draw.vert" ) )
                   .fragment( loadAsset( "draw.frag" ) ) );
@@ -194,6 +171,20 @@ void ParticlesApp::setup()
 
 }
 
+void ParticlesApp::keyDown( KeyEvent event )
+{
+  if( event.getChar() == 'f' ) {
+    pointSize += 0.1f;
+    gl::pointSize( pointSize );
+    mRenderProg->uniform("pointSize", pointSize);
+  }
+
+  if( event.getChar() == 'c' ) {
+    pointSize = 1.0f;
+    gl::pointSize( pointSize );
+    mRenderProg->uniform("pointSize", pointSize);
+  }
+}
 
 void ParticlesApp::update()
 {
@@ -223,16 +214,16 @@ void ParticlesApp::update()
   if( mMouseDown ) {
       mMouseForce += 10.0f;
   }
-//  mMouseDown = true;
-//  mMousePos[1] += 50.0f;
-//  if (mMousePos[1] >= 880) {
-//    mMousePos[0] += 40.0f;
-//    mMousePos[1] = 0.0f;
-//  }
-//  if (mMousePos[0] >= 1440) {
-//    mMousePos[0] = 0.0f;
-//    mMousePos[1] = 0.0f;
-//  }
+  mMouseDown = true;
+  mMousePos[1] += 50.0f;
+  if (mMousePos[1] >= 880) {
+    mMousePos[0] += 40.0f;
+    mMousePos[1] = 0.0f;
+  }
+  if (mMousePos[0] >= 1440) {
+    mMousePos[0] = 0.0f;
+    mMousePos[1] = 0.0f;
+  }
 }
 
 void ParticlesApp::draw()
@@ -242,7 +233,6 @@ void ParticlesApp::draw()
   gl::enableDepthRead();
   gl::enableDepthWrite();
   
-
   gl::ScopedGlslProg render( mRenderProg );
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
