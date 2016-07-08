@@ -23,11 +23,12 @@ using namespace std;
  */
 struct Particle
 {
-    vec3  pos;
-    vec3  ppos;
-    vec3  home;
-    ColorA  color;
-    float damping;
+  vec3  pos;
+  vec3  ppos;
+  vec3  home;
+  ColorA  color;
+  float damping;
+  vec2  pixel;
 };
 
 
@@ -43,7 +44,7 @@ public:
   void setup() override;
   void update() override;
   void draw() override;
-  void keyDown( KeyEvent event );
+  void keyDown( KeyEvent event ) override;
   
 private:
   gl::GlslProgRef mRenderProg;
@@ -67,16 +68,18 @@ private:
   Surface32f		mImage;
   vector<Particle> particles;
   float pointSize = 1.0f;
+  gl::Texture2dRef		mTex;
 };
 
 
 void ParticlesApp::setup()
 {
 
-  mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
-
+  mImage = loadImage( loadAsset( "textures/small.jpg" ) );
+  mTex = gl::Texture2d::create( mImage );
+  mTex->bind(0);
   
-  Surface32f::Iter pixelIter = mImage.getIter();
+  //Surface32f::Iter pixelIter = mImage.getIter();
   uint32_t mWidth = mImage.getWidth();
   uint32_t mHeight = mImage.getHeight();
   
@@ -86,23 +89,21 @@ void ParticlesApp::setup()
   // How many particles to create. (600k default)
   particles.assign( NUM_PARTICLES, Particle() );
   
-  
-  int i = 0;
-  int j = 0;
-  while( pixelIter.line() ) {
-    while( pixelIter.pixel() ) {
-      ColorA color( pixelIter.r(), pixelIter.g(), pixelIter.b(), 1.0 );
-      auto &p = particles.at( i*mWidth+j);
-      p.pos = vec3( j,i,0);
+  for( int i = 0; i < mWidth; ++i )
+  {
+    for( int j = 0; j < mHeight; ++j ) {
+      auto &p = particles.at( i*mWidth +j );
+      p.pos = vec3( i, j, 0 );
+      p.pixel = vec2(float(i/(mWidth-1.0f)),float(j/(mHeight-1.0f)));
+      printf("pixel is %f %f\n",  p.pixel[0], p.pixel[1]);
       p.home = p.pos;
       p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
       p.damping = 0.0f; //Rand::randFloat( 0.965f, 0.985f );
-      p.color = color;
-      j++;
+      p.color = Color( CM_RGB, 239.0f/255.0f, 3.0f/255.0f, 137.0f/255.0f);
     }
-    i++;
-    j = 0;
+    printf("index is %d out of %d\n", (i*mWidth), NUM_PARTICLES);
   }
+
   
   // Create particle buffers on GPU and copy data into the first buffer.
   // Mark as static since we only write from the CPU once.
@@ -122,13 +123,15 @@ void ParticlesApp::setup()
     gl::enableVertexAttribArray( 2 );
     gl::enableVertexAttribArray( 3 );
     gl::enableVertexAttribArray( 4 );
-
-
+    gl::enableVertexAttribArray( 5 );
+    
     gl::vertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, pos) );
     gl::vertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, color) );
     gl::vertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, ppos) );
     gl::vertexAttribPointer( 3, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, home) );
     gl::vertexAttribPointer( 4, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, damping) );
+    gl::vertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, pixel) );
+    
   }
 
   // Load our update program.
@@ -141,13 +144,14 @@ void ParticlesApp::setup()
   
   
     mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" ) )
-      .feedbackFormat( GL_INTERLEAVED_ATTRIBS )
-      .feedbackVaryings( { "position", "pposition", "home", "color", "damping" } )
-      .attribLocation( "iPosition", 0 )
-      .attribLocation( "iColor", 1 )
-      .attribLocation( "iPPosition", 2 )
-      .attribLocation( "iHome", 3 )
-      .attribLocation( "iDamping", 4 )
+                                       .feedbackFormat( GL_INTERLEAVED_ATTRIBS )
+                                       .feedbackVaryings( { "position", "pposition", "home", "color", "damping", "pixel" } )
+                                       .attribLocation( "iPosition", 0 )
+                                       .attribLocation( "iColor", 1 )
+                                       .attribLocation( "iPPosition", 2 )
+                                       .attribLocation( "iHome", 3 )
+                                       .attribLocation( "iDamping", 4 )
+                                       .attribLocation( "iPixel", 5 )
   );
 
   // Listen to mouse events so we can send data as uniforms.
@@ -194,7 +198,7 @@ void ParticlesApp::update()
   gl::ScopedState rasterizer( GL_RASTERIZER_DISCARD, true );  // turn off fragment stage
   mUpdateProg->uniform( "uMouseForce", mMouseForce );
   mUpdateProg->uniform( "uMousePos", mMousePos );
-
+  mUpdateProg->uniform( "uTex", 0);
     
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
@@ -214,16 +218,16 @@ void ParticlesApp::update()
   if( mMouseDown ) {
       mMouseForce += 10.0f;
   }
-  mMouseDown = true;
-  mMousePos[1] += 50.0f;
-  if (mMousePos[1] >= 880) {
-    mMousePos[0] += 40.0f;
-    mMousePos[1] = 0.0f;
-  }
-  if (mMousePos[0] >= 1440) {
-    mMousePos[0] = 0.0f;
-    mMousePos[1] = 0.0f;
-  }
+//  mMouseDown = true;
+//  mMousePos[1] += 50.0f;
+//  if (mMousePos[1] >= 880) {
+//    mMousePos[0] += 40.0f;
+//    mMousePos[1] = 0.0f;
+//  }
+//  if (mMousePos[0] >= 1440) {
+//    mMousePos[0] = 0.0f;
+//    mMousePos[1] = 0.0f;
+//  }
 }
 
 void ParticlesApp::draw()
@@ -232,7 +236,7 @@ void ParticlesApp::draw()
   gl::setMatricesWindowPersp( getWindowSize() );
   gl::enableDepthRead();
   gl::enableDepthWrite();
-  
+
   gl::ScopedGlslProg render( mRenderProg );
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
