@@ -3,17 +3,20 @@
 uniform float uMouseForce;
 uniform vec3  uMousePos;
 
+
 in vec3   iPosition;
 in vec3   iPPostion;
 in vec3   iHome;
 in float  iDamping;
 in vec4   iColor;
 
+
 out vec3  position;
 out vec3  pposition;
 out vec3  home;
 out float damping;
 out vec4  color;
+out vec2  pixel;
 
 const float dt2 = 1.0 / (60.0 * 60.0);
 
@@ -23,7 +26,7 @@ void main()
 	pposition = iPPostion;
 	damping =   iDamping;
 	home =      iHome;
-	//color =     iColor;
+    color =     iColor;
 
     //mouse interaction
 	if( uMouseForce > 0.0 ) {
@@ -37,6 +40,7 @@ void main()
 	pposition = position;
 	vec3 acc = (home - position) * 100.0f;
 	position += vel + acc * dt2;
-	color = iColor + vec4(acc, 1.0) * vec4(vel, uMouseForce);
+	
+    //color = iColor + vec4(acc, 1.0) * vec4(vel, uMouseForce);
 
 }

@@ -29,61 +29,6 @@ struct Particle
     ColorA  color;
     float damping;
 };
-typedef struct {
-    double h;       // angle in degrees
-    double s;       // percent
-    double v;       // percent
-} hsv;
-typedef struct {
-    double r;       // percent
-    double g;       // percent
-    double b;       // percent
-} rgb;
-
-static hsv   rgb2hsv(rgb in);
-hsv rgb2hsv(rgb in)
-{
-    hsv         out;
-    double      min, max, delta;
-
-    min = in.r < in.g ? in.r : in.g;
-    min = min  < in.b ? min  : in.b;
-
-    max = in.r > in.g ? in.r : in.g;
-    max = max  > in.b ? max  : in.b;
-
-    out.v = max;                                // v
-    delta = max - min;
-    if (delta < 0.00001)
-    {
-        out.s = 0;
-        out.h = 0; // undefined, maybe nan?
-        return out;
-    }
-    if( max > 0.0 ) { // NOTE: if Max is == 0, this divide would cause a crash
-        out.s = (delta / max);                  // s
-    } else {
-        // if max is 0, then r = g = b = 0
-        // s = 0, v is undefined
-        out.s = 0.0;
-        out.h = NAN;                            // its now undefined
-        return out;
-    }
-    if( in.r >= max )                           // > is bogus, just keeps compilor happy
-        out.h = ( in.g - in.b ) / delta;        // between yellow & magenta
-    else
-        if( in.g >= max )
-            out.h = 2.0 + ( in.b - in.r ) / delta;  // between cyan & yellow
-        else
-            out.h = 4.0 + ( in.r - in.g ) / delta;  // between magenta & cyan
-
-    out.h *= 60.0;                              // degrees
-
-    if( out.h < 0.0 )
-        out.h += 360.0;
-
-    return out;
-}
 
 
 /**
@@ -93,7 +38,7 @@ hsv rgb2hsv(rgb in)
  particleUpdate.vs defines the simulation update step.
  Designed to have the same behavior as ParticleSphereCPU.
  */
-class HugeTVParticlesApp : public App {
+class ParticlesApp : public App {
 public:
   void setup() override;
   void update() override;
@@ -119,42 +64,68 @@ private:
   int       GRID_SIZE = 10;
   int       NUM_PARTICLES = 0;
   gl::Texture2dRef		mTex;
+  Surface32f		mImage;
 };
 
 
-void HugeTVParticlesApp::setup()
+void ParticlesApp::setup()
 {
   // Create initial particle layout.
 // How many particles to create. (600k default)
 
-  GRID_SIZE = 734;
+//  GRID_SIZE = 734;
+//
+//  NUM_PARTICLES = GRID_SIZE * GRID_SIZE;
 
-  NUM_PARTICLES = GRID_SIZE * GRID_SIZE;
+  mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
+//  mTex = gl::Texture2d::create( img );
+//  mTex->bind( 0 );
 
-  auto img = loadImage( loadAsset( "tumblr_mfcow4BlEI1qd3feno1_500-11.jpg" ) );
-  mTex = gl::Texture2d::create( img );
-  mTex->bind( 0 );
 
   
+  Surface32f::Iter pixelIter = mImage.getIter();
+  uint32_t mWidth = mImage.getWidth();
+  uint32_t mHeight = mImage.getHeight();
+  
+  NUM_PARTICLES = mWidth * mHeight;
   vector<Particle> particles;
   particles.assign( NUM_PARTICLES, Particle() );
-
-  for( int i = 0; i < GRID_SIZE; ++i )
-  {
-    for( int j = 0; j < GRID_SIZE; ++j ) {
-      auto &p = particles.at( i*GRID_SIZE+j );
-      // assign starting values to particles.
-      // float x = radius * sin( inclination * i*j ) * cos( azimuth * i*j );
-      // float y = radius * cos( inclination * i*j );
-      // float z = radius * sin( inclination * i*j ) * sin( azimuth * i*j );
-
-      p.pos = vec3( i+1, j+1, 0 );
+  
+  
+  int i = 0;
+  int j = 0;
+  while( pixelIter.line() ) {
+    while( pixelIter.pixel() ) {
+      ColorA color( pixelIter.r(), pixelIter.g(), pixelIter.b(), 1.0 );
+      auto &p = particles.at( i*mWidth+j);
+      p.pos = vec3( j,i,0);
       p.home = p.pos;
       p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
       p.damping = 0.0f; //Rand::randFloat( 0.965f, 0.985f );
-      p.color = Color( CM_RGB, 239.0f/255.0f, 3.0f/255.0f, 137.0f/255.0f);
+      p.color = color;
+      j++;
     }
+    i++;
+    j = 0;
   }
+  
+//  for( int i = 0; i < GRID_SIZE; ++i )
+//  {
+//    for( int j = 0; j < GRID_SIZE; ++j ) {
+//      auto &p = particles.at( i*GRID_SIZE+j );
+//      // assign starting values to particles.
+//      // float x = radius * sin( inclination * i*j ) * cos( azimuth * i*j );
+//      // float y = radius * cos( inclination * i*j );
+//      // float z = radius * sin( inclination * i*j ) * sin( azimuth * i*j );
+//
+//      p.pos = vec3( i+1, j+1, 0 );
+//      p.pixel = vec2(i,j);
+//      p.home = p.pos;
+//      p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
+//      p.damping = 0.0f; //Rand::randFloat( 0.965f, 0.985f );
+//      p.color = Color( CM_RGB, 239.0f/255.0f, 3.0f/255.0f, 137.0f/255.0f);
+//    }
+//  }
 
   // Create particle buffers on GPU and copy data into the first buffer.
   // Mark as static since we only write from the CPU once.
@@ -174,6 +145,8 @@ void HugeTVParticlesApp::setup()
     gl::enableVertexAttribArray( 2 );
     gl::enableVertexAttribArray( 3 );
     gl::enableVertexAttribArray( 4 );
+
+
     gl::vertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, pos) );
     gl::vertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, color) );
     gl::vertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, ppos) );
@@ -222,7 +195,7 @@ void HugeTVParticlesApp::setup()
 }
 
 
-void HugeTVParticlesApp::update()
+void ParticlesApp::update()
 {
   
   // Update particles on the GPU
@@ -231,6 +204,7 @@ void HugeTVParticlesApp::update()
   mUpdateProg->uniform( "uMouseForce", mMouseForce );
   mUpdateProg->uniform( "uMousePos", mMousePos );
 
+    
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
   // Bind destination as buffer base.
@@ -247,18 +221,28 @@ void HugeTVParticlesApp::update()
 
   // Update mouse force.
   if( mMouseDown ) {
-      mMouseForce = 150.0f;
+      mMouseForce += 10.0f;
   }
+//  mMouseDown = true;
+//  mMousePos[1] += 50.0f;
+//  if (mMousePos[1] >= 880) {
+//    mMousePos[0] += 40.0f;
+//    mMousePos[1] = 0.0f;
+//  }
+//  if (mMousePos[0] >= 1440) {
+//    mMousePos[0] = 0.0f;
+//    mMousePos[1] = 0.0f;
+//  }
 }
 
-void HugeTVParticlesApp::draw()
+void ParticlesApp::draw()
 {
   gl::clear( Color( 0, 0, 0 ) );
   gl::setMatricesWindowPersp( getWindowSize() );
   gl::enableDepthRead();
   gl::enableDepthWrite();
   
-  mRenderProg->uniform( "uTex", 0 );
+
   gl::ScopedGlslProg render( mRenderProg );
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
@@ -266,6 +250,7 @@ void HugeTVParticlesApp::draw()
 }
 
 
-CINDER_APP( HugeTVParticlesApp, RendererGl, [] ( App::Settings *settings ) {
+CINDER_APP( ParticlesApp, RendererGl, [] ( App::Settings *settings ) {
+  settings->setWindowSize( 	1440, 880 );
   settings->setMultiTouchEnabled( false );
 })

@@ -20,7 +20,7 @@
 		5323E6B20EAFCA74003A9687 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5323E6B10EAFCA74003A9687 /* CoreVideo.framework */; };
 		640D4AA0782948BDB405B703 /* CinderApp.icns in Resources */ = {isa = PBXBuildFile; fileRef = 81F9BF21660547CCBD68CCA0 /* CinderApp.icns */; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
-		9E84CBF0EFB348EE95F7EF71 /* HugeTVParticlesApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AEA8D07159EA47299B74653C /* HugeTVParticlesApp.cpp */; };
+		9E84CBF0EFB348EE95F7EF71 /* ParticlesApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AEA8D07159EA47299B74653C /* ParticlesApp.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,7 +41,7 @@
 		5323E6B10EAFCA74003A9687 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = /System/Library/Frameworks/CoreVideo.framework; sourceTree = "<absolute>"; };
 		81F9BF21660547CCBD68CCA0 /* CinderApp.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = CinderApp.icns; path = ../resources/CinderApp.icns; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* particles.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = particles.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AEA8D07159EA47299B74653C /* HugeTVParticlesApp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.cpp; name = HugeTVParticlesApp.cpp; path = ../src/HugeTVParticlesApp.cpp; sourceTree = "<group>"; };
+		AEA8D07159EA47299B74653C /* ParticlesApp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ParticlesApp.cpp; path = ../src/ParticlesApp.cpp; sourceTree = "<group>"; };
 		B2D977EA4064494685CFF5B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FE89757ABBA14E71A7B43203 /* particles_Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = particles_Prefix.pch; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -78,7 +78,7 @@
 		080E96DDFE201D6D7F000001 /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				AEA8D07159EA47299B74653C /* HugeTVParticlesApp.cpp */,
+				AEA8D07159EA47299B74653C /* ParticlesApp.cpp */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -223,7 +223,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9E84CBF0EFB348EE95F7EF71 /* HugeTVParticlesApp.cpp in Sources */,
+				9E84CBF0EFB348EE95F7EF71 /* ParticlesApp.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
