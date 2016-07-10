@@ -23,11 +23,12 @@ using namespace std;
  */
 struct Particle
 {
-    vec3  pos;
-    vec3  ppos;
-    vec3  home;
-    ColorA  color;
-    float damping;
+  vec3  pos;
+  vec3  ppos;
+  vec3  home;
+  ColorA  color;
+  float damping;
+  float index = 0;
 };
 
 
@@ -43,7 +44,7 @@ public:
   void setup() override;
   void update() override;
   void draw() override;
-  void keyDown( KeyEvent event );
+  void keyDown( KeyEvent event ) override;
   
 private:
   gl::GlslProgRef mRenderProg;
@@ -67,12 +68,18 @@ private:
   Surface32f		mImage;
   vector<Particle> particles;
   float pointSize = 1.0f;
+  vec3 mMousePositions[2];
+  
+  
+//  {0.0, 0.0, 0.0, 1440.0, 880.0, 0.0};
 };
 
 
 void ParticlesApp::setup()
 {
-
+  for (int i=0; i<6; i++) {               // update array values
+    mMousePositions[i] = 880.0f;
+  }
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
 
   
@@ -98,6 +105,7 @@ void ParticlesApp::setup()
       p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
       p.damping = 0.0f; //Rand::randFloat( 0.965f, 0.985f );
       p.color = color;
+      p.index = i;
       j++;
     }
     i++;
@@ -122,34 +130,37 @@ void ParticlesApp::setup()
     gl::enableVertexAttribArray( 2 );
     gl::enableVertexAttribArray( 3 );
     gl::enableVertexAttribArray( 4 );
-
+    gl::enableVertexAttribArray( 5 );
 
     gl::vertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, pos) );
     gl::vertexAttribPointer( 1, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, color) );
     gl::vertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, ppos) );
     gl::vertexAttribPointer( 3, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, home) );
     gl::vertexAttribPointer( 4, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, damping) );
+    gl::vertexAttribPointer( 5, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, index) );
   }
 
   // Load our update program.
   // Match up our attribute locations with the description we gave.
 
-//  mRenderProg = gl::getStockShader( gl::ShaderDef().color() );
-    mRenderProg = gl::GlslProg::create( gl::GlslProg::Format()
+  //  mRenderProg = gl::getStockShader( gl::ShaderDef().color() );
+  mRenderProg = gl::GlslProg::create( gl::GlslProg::Format()
                   .vertex( loadAsset( "draw.vert" ) )
                   .fragment( loadAsset( "draw.frag" ) ) );
   
-  
-    mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" ) )
+  mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" ) )
       .feedbackFormat( GL_INTERLEAVED_ATTRIBS )
-      .feedbackVaryings( { "position", "pposition", "home", "color", "damping" } )
+      .feedbackVaryings( { "position", "pposition", "home", "color", "damping", "index" } )
       .attribLocation( "iPosition", 0 )
       .attribLocation( "iColor", 1 )
       .attribLocation( "iPPosition", 2 )
       .attribLocation( "iHome", 3 )
       .attribLocation( "iDamping", 4 )
+      .attribLocation( "iIndex", 5 )
   );
+  mUpdateProg->uniform( "uMousePositions",  mMousePositions);
 
+  
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
@@ -193,9 +204,7 @@ void ParticlesApp::update()
   gl::ScopedGlslProg prog( mUpdateProg );
   gl::ScopedState rasterizer( GL_RASTERIZER_DISCARD, true );  // turn off fragment stage
   mUpdateProg->uniform( "uMouseForce", mMouseForce );
-  mUpdateProg->uniform( "uMousePos", mMousePos );
-
-    
+  
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
   // Bind destination as buffer base.
@@ -214,16 +223,7 @@ void ParticlesApp::update()
   if( mMouseDown ) {
       mMouseForce += 10.0f;
   }
-  mMouseDown = true;
-  mMousePos[1] += 50.0f;
-  if (mMousePos[1] >= 880) {
-    mMousePos[0] += 40.0f;
-    mMousePos[1] = 0.0f;
-  }
-  if (mMousePos[0] >= 1440) {
-    mMousePos[0] = 0.0f;
-    mMousePos[1] = 0.0f;
-  }
+
 }
 
 void ParticlesApp::draw()
