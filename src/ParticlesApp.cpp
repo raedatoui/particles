@@ -12,6 +12,7 @@
 #include "cinder/app/RendererGl.h"
 #include "cinder/Rand.h"
 #include "cinder/gl/gl.h"
+#include "cinder/Timeline.h"
 
 using namespace ci;
 using namespace ci::app;
@@ -28,7 +29,7 @@ struct Particle
   vec3  home;
   ColorA  color;
   float damping;
-  float index = 0;
+  float index;
 };
 
 
@@ -68,24 +69,24 @@ private:
   Surface32f		mImage;
   vector<Particle> particles;
   float pointSize = 1.0f;
-  vec3 mMousePositions[2];
+  Anim<vec3> mMousePositions[2];
+  int32_t mWidth;
+  int32_t mHeight;
   
-  
-//  {0.0, 0.0, 0.0, 1440.0, 880.0, 0.0};
 };
 
 
 void ParticlesApp::setup()
 {
-  for (int i=0; i<6; i++) {               // update array values
-    mMousePositions[i] = 880.0f;
-  }
+  mMousePositions[0] = vec3(0.0f, 0.0f, 0.0f );
+  mMousePositions[1] = vec3(1440.0f, 880.0f, 0.0f );
+  
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
 
   
   Surface32f::Iter pixelIter = mImage.getIter();
-  uint32_t mWidth = mImage.getWidth();
-  uint32_t mHeight = mImage.getHeight();
+  mWidth = mImage.getWidth();
+  mHeight = mImage.getHeight();
   
   NUM_PARTICLES = mWidth * mHeight;
 
@@ -103,7 +104,7 @@ void ParticlesApp::setup()
       p.pos = vec3( j,i,0);
       p.home = p.pos;
       p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
-      p.damping = 0.0f; //Rand::randFloat( 0.965f, 0.985f );
+      p.damping = 0; //Rand::randFloat( 0.005f, 0.01f );
       p.color = color;
       p.index = i;
       j++;
@@ -158,14 +159,12 @@ void ParticlesApp::setup()
       .attribLocation( "iDamping", 4 )
       .attribLocation( "iIndex", 5 )
   );
-  mUpdateProg->uniform( "uMousePositions",  mMousePositions);
-
   
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
-    mMouseDown = true;
-    mMouseForce = 500.0f;
+    mMouseDown = false;
+    mMouseForce = 0.0f;
     mMousePos = vec3( event.getX(), event.getY(), 0.0f );
   });
 
@@ -176,8 +175,8 @@ void ParticlesApp::setup()
 
   getWindow()->getSignalMouseUp().connect( [this]( MouseEvent event )
   {
-     mMouseForce = 0.0f;
-     mMouseDown = false;
+     mMouseForce = 500.0f;
+     mMouseDown = true;
   });
 
 }
@@ -195,7 +194,17 @@ void ParticlesApp::keyDown( KeyEvent event )
     gl::pointSize( pointSize );
     mRenderProg->uniform("pointSize", pointSize);
   }
+  if (event.getChar() == 'a') {
+    vec3 ball1 = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
+    vec3 ball2 = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
+    
+    // the call to apply() replaces any existing tweens on mBlackPos with this new one
+    timeline().apply( &mMousePositions[0], ball1, 3.5f, EaseInCubic() );
+    // the call to appendTo causes the white circle to start when the black one finishes
+    timeline().apply( &mMousePositions[1] , ball2, 3.5f, EaseOutQuint() ); //.appendTo( &mBlackPos );
+  }
 }
+
 
 void ParticlesApp::update()
 {
@@ -203,7 +212,10 @@ void ParticlesApp::update()
   // Update particles on the GPU
   gl::ScopedGlslProg prog( mUpdateProg );
   gl::ScopedState rasterizer( GL_RASTERIZER_DISCARD, true );  // turn off fragment stage
+  
+  vec3 wt[2] =  {mMousePositions[0].value(), mMousePositions[1].value()};
   mUpdateProg->uniform( "uMouseForce", mMouseForce );
+  mUpdateProg->uniform( "uMousePositions", wt, 2);
   
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
@@ -221,9 +233,9 @@ void ParticlesApp::update()
 
   // Update mouse force.
   if( mMouseDown ) {
-      mMouseForce += 10.0f;
+      mMouseForce += 100.0f;
   }
-
+ 
 }
 
 void ParticlesApp::draw()

@@ -21,29 +21,25 @@ const float dt2 = 1.0 / (60.0 * 60.0);
 
 
 
-vec3 getPole(int offset) {
-  
-//  float x = uMousePositions[0];
-//  offset++;
-//  float y = uMousePositions[1];
-  return vec3(uMousePositions[0],uMousePositions[1],0.0);
-}
-
 void main()
 {
   position =  iPosition;
   pposition = iPPostion;
   damping =   iDamping;
   home =      iHome;
-//  color =     iColor;
+  color =     iColor;
   index =     iIndex;
   
-//  int offset = int(mod(index, 2.0)) * 3;
-  int offset = 3;
+  vec3 rgb = color.rgb;
+  int offset = 0;
+  if (rgb.r + rgb.b + rgb.g > 2.5) {
+    offset = 1;
+  }
+  //offset = int(mod(index, 2.0));
+  vec3 uMousePos = uMousePositions[offset];
 
-  vec3 uMousePos = getPole(offset);
-  color = vec4(uMousePos, 1.0);
   //mouse interaction
+  
   if( uMouseForce > 0.0 ) {
       vec3 dir = position - uMousePos;
       float d2 = length( dir );
@@ -53,9 +49,8 @@ void main()
 
   vec3 vel = (position - pposition) * damping;
   pposition = position;
-  vec3 acc = (home - position) * 100.0f;
+  vec3 acc = (home - position) * 500.0f;
   position += vel + acc * dt2;
   
-  //color = iColor + vec4(acc, 1.0) * vec4(vel, uMouseForce);
 
 }
