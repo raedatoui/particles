@@ -29,7 +29,7 @@ struct Particle
   vec3  home;
   ColorA  color;
   float damping;
-  float index;
+  vec2 pixel;
 };
 
 
@@ -72,6 +72,7 @@ private:
   Anim<vec3> mMousePositions[2];
   int32_t mWidth;
   int32_t mHeight;
+  gl::Texture2dRef		mTex; 
 
 };
 
@@ -86,6 +87,10 @@ void ParticlesApp::setup()
 
   
   Surface32f::Iter pixelIter = mImage.getIter();
+
+  mTex = gl::Texture2d::create( mImage );
+  mTex->bind(0);
+  
   mWidth = mImage.getWidth();
   mHeight = mImage.getHeight();
   
@@ -108,7 +113,7 @@ void ParticlesApp::setup()
       p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
       p.damping = 0; //Rand::randFloat( 0.005f, 0.01f );
       p.color = color;
-      p.index = i;
+      p.pixel = vec2(j,i);
       j++;
       
     }
@@ -141,7 +146,7 @@ void ParticlesApp::setup()
     gl::vertexAttribPointer( 2, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, ppos) );
     gl::vertexAttribPointer( 3, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, home) );
     gl::vertexAttribPointer( 4, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, damping) );
-    gl::vertexAttribPointer( 5, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, index) );
+    gl::vertexAttribPointer( 5, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const GLvoid*)offsetof(Particle, pixel) );
   }
 
   // Load our update program.
@@ -154,14 +159,15 @@ void ParticlesApp::setup()
   
   mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" ) )
       .feedbackFormat( GL_INTERLEAVED_ATTRIBS )
-      .feedbackVaryings( { "position", "pposition", "home", "color", "damping", "index" } )
+      .feedbackVaryings( { "position", "pposition", "home", "color", "damping", "pixel" } )
       .attribLocation( "iPosition", 0 )
       .attribLocation( "iColor", 1 )
       .attribLocation( "iPPosition", 2 )
       .attribLocation( "iHome", 3 )
       .attribLocation( "iDamping", 4 )
-      .attribLocation( "iIndex", 5 )
+      .attribLocation( "iPixel", 5 )
   );
+  mUpdateProg->uniform( "uTex", 0);
   
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
