@@ -67,12 +67,15 @@ private:
   vec3      mMousePos = vec3( 0, 0, 0 );
   int       NUM_PARTICLES = 0;
   Surface32f		mImage;
+  Surface32f		mImage2;
+  
   vector<Particle> particles;
   float pointSize = 1.0f;
   Anim<vec3> mMousePositions[2];
   int32_t mWidth;
   int32_t mHeight;
-  gl::Texture2dRef		mTex; 
+  gl::Texture2dRef		mTex;
+  gl::Texture2dRef		mTex2;
 
 };
 
@@ -91,6 +94,10 @@ void ParticlesApp::setup()
   mTex->bind(0);
   
 
+  mImage2 = loadImage( loadAsset( "textures/h2.jpg" ) );
+  mTex2 = gl::Texture2d::create( mImage2 );
+  mTex2->bind(1);
+  
   NUM_PARTICLES = mWidth * mHeight;
 
   // Create initial particle layout.
@@ -100,7 +107,7 @@ void ParticlesApp::setup()
   
   int i = 0;
   int j = 0;
-  int counter = 0;
+
   try {
     for (i=1; i <= mHeight; ++i) {
       for (j=1; j <= mWidth; ++j) {
@@ -109,8 +116,8 @@ void ParticlesApp::setup()
           p.pos = vec3(j,i,0);
           p.home = p.pos;
           p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
-          p.damping = 0; //Rand::randFloat( 0.005f, 0.01f );
-          p.pixel = vec2(j,i);
+          p.damping = 0; //Rand::randFloat( 0.0965f, 0.0985f );
+          p.pixel = vec2(float(j)/float(mWidth),1.0-float(i)/float(mHeight));
       }
 
     }
@@ -154,7 +161,7 @@ void ParticlesApp::setup()
                   .vertex( loadAsset( "draw.vert" ) )
                   .fragment( loadAsset( "draw.frag" ) ) );
   
-  mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" ) )
+  mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" )  )
       .feedbackFormat( GL_INTERLEAVED_ATTRIBS )
       .feedbackVaryings( { "position", "pposition", "home", "color", "damping", "pixel" } )
       .attribLocation( "iPosition", 0 )
@@ -165,12 +172,13 @@ void ParticlesApp::setup()
       .attribLocation( "iPixel", 5 )
   );
   mUpdateProg->uniform( "uTex", 0);
+  mUpdateProg->uniform( "uTex2", 1);
   
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
-    mMouseDown = false;
-    mMouseForce = 0.0f;
+    mMouseDown = true;
+    mMouseForce = 500.0f;
     mMousePos = vec3( event.getX(), event.getY(), 0.0f );
   });
 
@@ -181,8 +189,8 @@ void ParticlesApp::setup()
 
   getWindow()->getSignalMouseUp().connect( [this]( MouseEvent event )
   {
-     mMouseForce = 500.0f;
-     mMouseDown = true;
+    mMouseForce = 0.0f;
+    mMouseDown = false;
   });
 
 }
@@ -247,7 +255,7 @@ void ParticlesApp::update()
 void ParticlesApp::draw()
 {
   gl::clear( Color( 0, 0, 0 ) );
-  gl::setMatricesWindowPersp( getWindowSize() );
+//  gl::setMatricesWindowPersp( getWindowSize() );
   gl::enableDepthRead();
   gl::enableDepthWrite();
   
@@ -259,6 +267,6 @@ void ParticlesApp::draw()
 
 
 CINDER_APP( ParticlesApp, RendererGl, [] ( App::Settings *settings ) {
-  settings->setWindowSize( 	1440, 880 );
+//  settings->setWindowSize( 	1440, 880 );
   settings->setMultiTouchEnabled( false );
 })
