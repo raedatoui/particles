@@ -84,16 +84,13 @@ void ParticlesApp::setup()
   mMousePositions[1] = vec3(1440.0f, 880.0f, 0.0f );
   
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
-
-  
-  Surface32f::Iter pixelIter = mImage.getIter();
-
-  mTex = gl::Texture2d::create( mImage );
-  mTex->bind(0);
-  
   mWidth = mImage.getWidth();
   mHeight = mImage.getHeight();
   
+  mTex = gl::Texture2d::create( mImage );
+  mTex->bind(0);
+  
+
   NUM_PARTICLES = mWidth * mHeight;
 
   // Create initial particle layout.
@@ -103,25 +100,25 @@ void ParticlesApp::setup()
   
   int i = 0;
   int j = 0;
+  int counter = 0;
+  try {
+    for (i=1; i <= mHeight; ++i) {
+      for (j=1; j <= mWidth; ++j) {
+        int index = j + (i-1)*mWidth - 1;
+          auto &p = particles.at(index );
+          p.pos = vec3(j,i,0);
+          p.home = p.pos;
+          p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
+          p.damping = 0; //Rand::randFloat( 0.005f, 0.01f );
+          p.pixel = vec2(j,i);
+      }
 
-  while( pixelIter.line() ) {
-    while( pixelIter.pixel() ) {
-      ColorA color( pixelIter.r(), pixelIter.g(), pixelIter.b(), 1.0 );
-      auto &p = particles.at( i*mWidth+j);
-      p.pos = vec3( j,i,0);
-      p.home = p.pos;
-      p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
-      p.damping = 0; //Rand::randFloat( 0.005f, 0.01f );
-      p.color = color;
-      p.pixel = vec2(j,i);
-      j++;
-      
     }
-    i++;
-    j = 0;
   }
-  
-  // Create particle buffers on GPU and copy data into the first buffer.
+  catch( ci::Exception &exc ) {
+    console() << i << j << " failed to load doc, what: " << exc.what() << endl;
+  }
+    // Create particle buffers on GPU and copy data into the first buffer.
   // Mark as static since we only write from the CPU once.
   mParticleBuffer[mSourceIndex] = gl::Vbo::create( GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), particles.data(), GL_STATIC_DRAW );
   mParticleBuffer[mDestinationIndex] = gl::Vbo::create( GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), nullptr, GL_STATIC_DRAW );
