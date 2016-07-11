@@ -72,12 +72,13 @@ private:
   Anim<vec3> mMousePositions[2];
   int32_t mWidth;
   int32_t mHeight;
-  
+
 };
 
 
 void ParticlesApp::setup()
 {
+  
   mMousePositions[0] = vec3(0.0f, 0.0f, 0.0f );
   mMousePositions[1] = vec3(1440.0f, 880.0f, 0.0f );
   
@@ -97,6 +98,7 @@ void ParticlesApp::setup()
   
   int i = 0;
   int j = 0;
+
   while( pixelIter.line() ) {
     while( pixelIter.pixel() ) {
       ColorA color( pixelIter.r(), pixelIter.g(), pixelIter.b(), 1.0 );
@@ -108,6 +110,7 @@ void ParticlesApp::setup()
       p.color = color;
       p.index = i;
       j++;
+      
     }
     i++;
     j = 0;
