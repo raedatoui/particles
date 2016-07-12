@@ -71,7 +71,7 @@ private:
   
   vector<Particle> particles;
   float pointSize = 1.0f;
-  Anim<vec3> mMousePositions[2];
+  Anim<vec3> mMousePositions[10];
   int32_t mWidth;
   int32_t mHeight;
   gl::Texture2dRef		mTex;
@@ -82,13 +82,19 @@ private:
 
 void ParticlesApp::setup()
 {
-  
-  mMousePositions[0] = vec3(0.0f, 0.0f, 0.0f );
-  mMousePositions[1] = vec3(1440.0f, 880.0f, 0.0f );
-  
+
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
   mWidth = mImage.getWidth();
   mHeight = mImage.getHeight();
+  
+  
+  float midH = float(mHeight)/2.0;
+  float sliceHalfWidth = float(mWidth)/20.0;
+  
+  for (int slice = 0; slice < 10; ++slice) {
+    mMousePositions[slice] = vec3(mWidth/10.0 * float(slice)+sliceHalfWidth, midH, 0.0f );
+  }
+
   
   mTex = gl::Texture2d::create( mImage );
   mTex->bind(0);
@@ -227,9 +233,13 @@ void ParticlesApp::update()
   gl::ScopedGlslProg prog( mUpdateProg );
   gl::ScopedState rasterizer( GL_RASTERIZER_DISCARD, true );  // turn off fragment stage
   
-  vec3 wt[2] =  {mMousePositions[0].value(), mMousePositions[1].value()};
+  vec3 wt[10];
+  for(int k = 0; k < 10; ++k) {
+    wt[k] =  mMousePositions[k].value();
+  }
+  
   mUpdateProg->uniform( "uMouseForce", mMouseForce );
-  mUpdateProg->uniform( "uMousePositions", wt, 2);
+  mUpdateProg->uniform( "uMousePositions", wt, 10);
   
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
