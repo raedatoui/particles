@@ -4,6 +4,8 @@ uniform float uMouseForce;
 uniform vec3 uMousePositions[10];
 uniform sampler2D uTex;
 uniform sampler2D uTex2;
+uniform float attenuation;
+
 
 in vec3   iPosition;
 in vec3   iPPostion;
@@ -20,13 +22,14 @@ out vec4  color;
 out vec2 pixel;
 
 const float dt2 = 1.0 / (60.0 * 60.0);
+const vec2 sample_offset = vec2(1.0, 0.0);
 
 #include "./PhotoshopMathFP.glsl"
 
 vec3 selectPoleByIndex() {
   float m = iPixel[0] * 10.0;
-  int offset = int(m);
-  return uMousePositions[offset];
+  int ind = int(m);
+  return uMousePositions[ind];
 }
 
 vec3 selectPoleByColor() {
@@ -64,6 +67,32 @@ vec4 getPixelColor() {
   return colorOut;
 }
 
+vec4 blurPixel(vec3 sum)
+{
+  sum += texture( uTex, iPixel + -1.0 * sample_offset ).rgb * 0.009167927656011385;
+  sum += texture( uTex, iPixel +  -0.9 * sample_offset ).rgb * 0.014053461291849008;
+  sum += texture( uTex, iPixel +  -0.8 * sample_offset ).rgb * 0.020595286319257878;
+  sum += texture( uTex, iPixel +  -0.7 * sample_offset ).rgb * 0.028855245532226279;
+  sum += texture( uTex, iPixel +  -0.6 * sample_offset ).rgb * 0.038650411513543079;
+  sum += texture( uTex, iPixel +  -0.5 * sample_offset ).rgb * 0.049494378859311142;
+  sum += texture( uTex, iPixel +  -0.4 * sample_offset ).rgb * 0.060594058578763078;
+  sum += texture( uTex, iPixel +  -0.3 * sample_offset ).rgb * 0.070921288047096992;
+  sum += texture( uTex, iPixel +  -0.2 * sample_offset ).rgb * 0.079358891804948081;
+  sum += texture( uTex, iPixel +  -0.1 * sample_offset ).rgb * 0.084895951965930902;
+  sum += texture( uTex, iPixel +   0.0 * sample_offset ).rgb * 0.086826196862124602;
+  sum += texture( uTex, iPixel +  +0.1 * sample_offset ).rgb * 0.084895951965930902;
+  sum += texture( uTex, iPixel +  +0.2 * sample_offset ).rgb * 0.079358891804948081;
+  sum += texture( uTex, iPixel +  +0.3 * sample_offset ).rgb * 0.070921288047096992;
+  sum += texture( uTex, iPixel +  +0.4 * sample_offset ).rgb * 0.060594058578763078;
+  sum += texture( uTex, iPixel +  +0.5 * sample_offset ).rgb * 0.049494378859311142;
+  sum += texture( uTex, iPixel +  +0.6 * sample_offset ).rgb * 0.038650411513543079;
+  sum += texture( uTex, iPixel +  +0.7 * sample_offset ).rgb * 0.028855245532226279;
+  sum += texture( uTex, iPixel +  +0.8 * sample_offset ).rgb * 0.020595286319257878;
+  sum += texture( uTex, iPixel +  +0.9 * sample_offset ).rgb * 0.014053461291849008;
+  sum += texture( uTex, iPixel + + 1.0 * sample_offset ).rgb * 0.009167927656011385;
+  return vec4(attenuation * sum, 1.0);
+
+}
 void main()
 {
   position =  iPosition;
@@ -71,7 +100,7 @@ void main()
   damping =   iDamping;
   home =      iHome;
   pixel =     iPixel;
-  color =     getPixelColor();
+  color =     vec4(getPixelColor().rgb, 1.0);
 
   vec3 pole = selectPoleByIndex();
   moveToPole(pole);

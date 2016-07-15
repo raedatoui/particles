@@ -65,17 +65,19 @@ private:
   bool      mMouseDown = false;
   float     mMouseForce = 0.0f;
   vec3      mMousePos = vec3( 0, 0, 0 );
+  
   int       NUM_PARTICLES = 0;
   Surface32f		mImage;
   Surface32f		mImage2;
-  
-  vector<Particle> particles;
-  float pointSize = 1.0f;
-  Anim<vec3> mMousePositions[10];
   int32_t mWidth;
   int32_t mHeight;
   gl::Texture2dRef		mTex;
   gl::Texture2dRef		mTex2;
+  
+  vector<Particle> particles;
+  float pointSize = 1.0f;
+  Anim<vec3> mMousePositions[10];
+  float attenuation;
 
 };
 
@@ -100,7 +102,7 @@ void ParticlesApp::setup()
   mTex->bind(0);
   
 
-  mImage2 = loadImage( loadAsset( "textures/h2.jpg" ) );
+  mImage2 = loadImage( loadAsset( "textures/h3.jpg" ) );
   mTex2 = gl::Texture2d::create( mImage2 );
   mTex2->bind(1);
   
@@ -177,9 +179,7 @@ void ParticlesApp::setup()
       .attribLocation( "iDamping", 4 )
       .attribLocation( "iPixel", 5 )
   );
-  mUpdateProg->uniform( "uTex", 0);
-  mUpdateProg->uniform( "uTex2", 1);
-  
+
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
@@ -206,7 +206,7 @@ void ParticlesApp::keyDown( KeyEvent event )
   if( event.getChar() == 'f' ) {
     pointSize += 0.1f;
     gl::pointSize( pointSize );
-    mRenderProg->uniform("pointSize", pointSize);
+//    mRenderProg->uniform("pointSize", pointSize);
   }
 
   if( event.getChar() == 'c' ) {
@@ -214,14 +214,25 @@ void ParticlesApp::keyDown( KeyEvent event )
     gl::pointSize( pointSize );
     mRenderProg->uniform("pointSize", pointSize);
   }
+  if ( event.getChar() == 'b' ) {
+    attenuation += 0.1;
+  }
+  if ( event.getChar() == 'n' ) {
+    attenuation -= 0.1;
+  }
+  
   if (event.getChar() == 'a') {
-    vec3 ball1 = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
-    vec3 ball2 = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
+    for(int k = 0; k < 10; ++k) {
+
+      vec3 ball = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
+      timeline().apply( &mMousePositions[k], ball, 1.0f, EaseInCubic() );
+    }
+    //vec3 ball2 = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
     
     // the call to apply() replaces any existing tweens on mBlackPos with this new one
-    timeline().apply( &mMousePositions[0], ball1, 3.5f, EaseInCubic() );
+    
     // the call to appendTo causes the white circle to start when the black one finishes
-    timeline().apply( &mMousePositions[1] , ball2, 3.5f, EaseOutQuint() ); //.appendTo( &mBlackPos );
+    //timeline().apply( &mMousePositions[1] , ball2, 3.5f, EaseOutQuint() ); //.appendTo( &mBlackPos );
   }
 }
 
@@ -240,6 +251,10 @@ void ParticlesApp::update()
   
   mUpdateProg->uniform( "uMouseForce", mMouseForce );
   mUpdateProg->uniform( "uMousePositions", wt, 10);
+  mUpdateProg->uniform( "uTex", 0);
+  mUpdateProg->uniform( "uTex2", 1);
+  mUpdateProg->uniform( "attenuation", attenuation);
+  
   
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
@@ -273,10 +288,11 @@ void ParticlesApp::draw()
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
   gl::drawArrays( GL_POINTS, 0, NUM_PARTICLES );
+  
 }
 
 
 CINDER_APP( ParticlesApp, RendererGl, [] ( App::Settings *settings ) {
-//  settings->setWindowSize( 	1440, 880 );
+  settings->setWindowSize( 	1440, 880 );
   settings->setMultiTouchEnabled( false );
 })
