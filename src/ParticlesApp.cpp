@@ -63,7 +63,7 @@ private:
 
   // Mouse state suitable for passing as uniforms to update program
   bool      mMouseDown = false;
-  float     mMouseForce = 0.0f;
+  Anim<float>     mMouseForce;
   vec3      mMousePos = vec3( 0, 0, 0 );
   
   int       NUM_PARTICLES = 0;
@@ -76,8 +76,9 @@ private:
   
   vector<Particle> particles;
   float pointSize = 1.0f;
-  Anim<vec3> mMousePositions[10];
+  Anim<vec3> mMousePosition;
   float attenuation;
+  Anim<float> mTexBlend;
 
 };
 
@@ -92,17 +93,15 @@ void ParticlesApp::setup()
   
   float midH = float(mHeight)/2.0;
   float sliceHalfWidth = float(mWidth)/20.0;
+  mMousePosition = vec3(mWidth/10.0 * 5.0 + sliceHalfWidth, midH, 0.0f );
+  mMouseForce = 0;
   
-  for (int slice = 0; slice < 10; ++slice) {
-    mMousePositions[slice] = vec3(mWidth/10.0 * float(slice)+sliceHalfWidth, midH, 0.0f );
-  }
-
   
   mTex = gl::Texture2d::create( mImage );
   mTex->bind(0);
   
 
-  mImage2 = loadImage( loadAsset( "textures/h3.jpg" ) );
+  mImage2 = loadImage( loadAsset( "textures/pokemon.jpg" ) );
   mTex2 = gl::Texture2d::create( mImage2 );
   mTex2->bind(1);
   
@@ -124,7 +123,7 @@ void ParticlesApp::setup()
           p.pos = vec3(j,i,0);
           p.home = p.pos;
           p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
-          p.damping = 0; //Rand::randFloat( 0.0965f, 0.0985f );
+          p.damping = Rand::randFloat( 0.000965f, 0.000985f );
           p.pixel = vec2(float(j)/float(mWidth),1.0-float(i)/float(mHeight));
       }
 
@@ -133,7 +132,8 @@ void ParticlesApp::setup()
   catch( ci::Exception &exc ) {
     console() << i << j << " failed to load doc, what: " << exc.what() << endl;
   }
-    // Create particle buffers on GPU and copy data into the first buffer.
+  
+  // Create particle buffers on GPU and copy data into the first buffer.
   // Mark as static since we only write from the CPU once.
   mParticleBuffer[mSourceIndex] = gl::Vbo::create( GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), particles.data(), GL_STATIC_DRAW );
   mParticleBuffer[mDestinationIndex] = gl::Vbo::create( GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), nullptr, GL_STATIC_DRAW );
@@ -184,13 +184,12 @@ void ParticlesApp::setup()
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
     mMouseDown = true;
-    mMouseForce = 500.0f;
-    mMousePos = vec3( event.getX(), event.getY(), 0.0f );
+    mMousePosition = vec3( event.getX(), event.getY(), 0.0f );
   });
 
   getWindow()->getSignalMouseDrag().connect( [this]( MouseEvent event )
   {
-    mMousePos = vec3( event.getX(), event.getY(), 0.0f );
+    mMousePosition = vec3( event.getX(), event.getY(), 0.0f );
   });
 
   getWindow()->getSignalMouseUp().connect( [this]( MouseEvent event )
@@ -206,34 +205,23 @@ void ParticlesApp::keyDown( KeyEvent event )
   if( event.getChar() == 'f' ) {
     pointSize += 0.1f;
     gl::pointSize( pointSize );
-//    mRenderProg->uniform("pointSize", pointSize);
   }
 
-  if( event.getChar() == 'c' ) {
-    pointSize = 1.0f;
-    gl::pointSize( pointSize );
-    mRenderProg->uniform("pointSize", pointSize);
+
+  if (event.getChar() == 'a') {
+//    vec3 ball = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
+//    timeline().apply( &mMousePosition, ball, 1.0f, EaseInCubic() );
+//    
+//    float force = randFloat()*500.0f;
+//    timeline().apply( &mMouseForce, force, 1.0f, EaseInCubic() );
+    
+    
+    timeline().apply( &mTexBlend, 1.0f, 1.0f, EaseInCubic() );
   }
-  if ( event.getChar() == 'b' ) {
-    attenuation += 0.1;
-  }
-  if ( event.getChar() == 'n' ) {
-    attenuation -= 0.1;
+  if (event.getChar() == 'b') {
+    timeline().apply( &mTexBlend, 0.5f, 1.0f, EaseInCubic() );
   }
   
-  if (event.getChar() == 'a') {
-    for(int k = 0; k < 10; ++k) {
-
-      vec3 ball = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
-      timeline().apply( &mMousePositions[k], ball, 1.0f, EaseInCubic() );
-    }
-    //vec3 ball2 = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
-    
-    // the call to apply() replaces any existing tweens on mBlackPos with this new one
-    
-    // the call to appendTo causes the white circle to start when the black one finishes
-    //timeline().apply( &mMousePositions[1] , ball2, 3.5f, EaseOutQuint() ); //.appendTo( &mBlackPos );
-  }
 }
 
 
@@ -243,17 +231,14 @@ void ParticlesApp::update()
   // Update particles on the GPU
   gl::ScopedGlslProg prog( mUpdateProg );
   gl::ScopedState rasterizer( GL_RASTERIZER_DISCARD, true );  // turn off fragment stage
+
   
-  vec3 wt[10];
-  for(int k = 0; k < 10; ++k) {
-    wt[k] =  mMousePositions[k].value();
-  }
-  
-  mUpdateProg->uniform( "uMouseForce", mMouseForce );
-  mUpdateProg->uniform( "uMousePositions", wt, 10);
+  mUpdateProg->uniform( "uMouseForce", mMouseForce.value());
+  mUpdateProg->uniform( "uMousePosition", mMousePosition.value());
   mUpdateProg->uniform( "uTex", 0);
   mUpdateProg->uniform( "uTex2", 1);
-  mUpdateProg->uniform( "attenuation", attenuation);
+  mUpdateProg->uniform( "uTexBlend", mTexBlend.value());
+  
   
   
   // Bind the source data (Attributes refer to specific buffers).
@@ -269,12 +254,15 @@ void ParticlesApp::update()
 
   // Swap source and destination for next loop
   std::swap( mSourceIndex, mDestinationIndex );
-
-  // Update mouse force.
-  if( mMouseDown ) {
-      mMouseForce += 100.0f;
+  
+  if (mMouseDown) {
+    mMouseForce = mMouseForce + 10.0f;
   }
- 
+//  else {
+//    if(mMouseForce >= 0)
+//      mMouseForce = mMouseForce - 10.0f;
+//  }
+
 }
 
 void ParticlesApp::draw()
