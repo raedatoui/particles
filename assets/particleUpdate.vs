@@ -30,7 +30,8 @@ const float dt2 = 1.0 / (60.0 * 60.0);
 
 void moveToPole() {
   //mouse interaction
-  if( uMouseForce > 0.0 ) {
+  float dist = distance(uMousePosition, position);
+  if( uMouseForce > 0.0 && dist > 250.0f) {
     vec3 dir = position - uMousePosition;
     float d2 = length( dir );
     d2 *= d2;
@@ -58,10 +59,12 @@ void main()
 
 
   moveToPole();
-  
-  vec3 vel = (position - pposition) * damping;
-  pposition = position;
-  vec3 acc = (home - position) * 128.0f;
-  position += acc * dt2;
+  float dist2 = distance(uMousePosition, position);  
+//  if( dist2 < 500.0f) {
+    vec3 vel = (position - pposition) * damping;
+    pposition = position;
+    vec3 acc = (home - position) * 128.0f;
+    position += acc * dt2;
+//  }
 
 }

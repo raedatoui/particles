@@ -46,7 +46,8 @@ public:
   void update() override;
   void draw() override;
   void keyDown( KeyEvent event ) override;
-  
+  void renderParticlesToFbo();
+
 private:
   gl::GlslProgRef mRenderProg;
   gl::GlslProgRef mUpdateProg;
@@ -55,6 +56,7 @@ private:
   gl::VaoRef    mAttributes[2];
   // Buffers holding raw particle data on GPU.
   gl::VboRef    mParticleBuffer[2];
+  gl::FboRef			mFbo;
 
   // Current source and destination buffers for transform feedback.
   // Source and destination are swapped each frame after update.
@@ -79,6 +81,7 @@ private:
   Anim<vec3> mMousePosition;
   float attenuation;
   Anim<float> mTexBlend;
+  static const int	FBO_WIDTH = 1440, FBO_HEIGHT = 880;
 
 };
 
@@ -101,7 +104,7 @@ void ParticlesApp::setup()
   mTex->bind(0);
   
 
-  mImage2 = loadImage( loadAsset( "textures/pokemon.jpg" ) );
+  mImage2 = loadImage( loadAsset( "textures/h2.jpg" ) );
   mTex2 = gl::Texture2d::create( mImage2 );
   mTex2->bind(1);
   
@@ -197,7 +200,10 @@ void ParticlesApp::setup()
     mMouseForce = 0.0f;
     mMouseDown = false;
   });
-
+  
+  mFbo = gl::Fbo::create( FBO_WIDTH, FBO_HEIGHT);
+  gl::enableDepthRead();
+  gl::enableDepthWrite();
 }
 
 void ParticlesApp::keyDown( KeyEvent event )
@@ -262,20 +268,46 @@ void ParticlesApp::update()
 //    if(mMouseForce >= 0)
 //      mMouseForce = mMouseForce - 10.0f;
 //  }
-
+  
 }
 
-void ParticlesApp::draw()
+void ParticlesApp::renderParticlesToFbo()
 {
-  gl::clear( Color( 0, 0, 0 ) );
-//  gl::setMatricesWindowPersp( getWindowSize() );
-  gl::enableDepthRead();
-  gl::enableDepthWrite();
+  mFbo->bindFramebuffer();
+  // clear out the FBO with blue
+  gl::clear( Color( 0.25, 0.5f, 1.0f ) );
+
+  
+  gl::pushViewport();
+  gl::viewport( mFbo->getSize() );
+  gl::pushMatrices();
+  gl::setMatricesWindowPersp( mFbo->getSize() );
+
+  //  gl::setMatrices(fboCam);
+  //  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
   
   gl::ScopedGlslProg render( mRenderProg );
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
   gl::drawArrays( GL_POINTS, 0, NUM_PARTICLES );
+  
+  gl::popMatrices();
+  gl::popViewport();
+  mFbo->unbindFramebuffer();
+
+
+}
+
+void ParticlesApp::draw()
+{
+  renderParticlesToFbo();
+  
+  // clear the window to gray
+  gl::clear( Color( 0.35f, 0.35f, 0.35f ) );
+  gl::setMatricesWindow( getWindowSize() );
+  auto tex0 = mFbo->getColorTexture();
+  gl::draw( tex0, tex0->getBounds());
+
   
 }
 
