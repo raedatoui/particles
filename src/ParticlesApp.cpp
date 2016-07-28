@@ -82,6 +82,9 @@ private:
   float attenuation;
   Anim<float> mTexBlend;
   static const int	FBO_WIDTH = 1440, FBO_HEIGHT = 880;
+  int lastFrame;
+  int currentFrame;
+  float delta;
 
 };
 
@@ -246,6 +249,21 @@ void ParticlesApp::update()
   mUpdateProg->uniform( "uTexBlend", mTexBlend.value());
   
   
+  if (mMouseDown) {
+    mMouseForce = mMouseForce + 10.0f;
+    currentFrame = ci::app::getElapsedFrames();
+    delta = float(currentFrame - lastFrame)/100.0f;
+    mUpdateProg->uniform( "delta", delta);
+  }
+  else {
+    if(mMouseForce > 0)
+      mMouseForce = mMouseForce - 10.0f;
+
+     lastFrame = ci::app::getElapsedFrames();
+     delta -= 0.01f;
+     mUpdateProg->uniform("delta", delta);
+    
+  }
   
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
@@ -261,9 +279,7 @@ void ParticlesApp::update()
   // Swap source and destination for next loop
   std::swap( mSourceIndex, mDestinationIndex );
   
-  if (mMouseDown) {
-    mMouseForce = mMouseForce + 10.0f;
-  }
+
 //  else {
 //    if(mMouseForce >= 0)
 //      mMouseForce = mMouseForce - 10.0f;
@@ -273,28 +289,24 @@ void ParticlesApp::update()
 
 void ParticlesApp::renderParticlesToFbo()
 {
-  mFbo->bindFramebuffer();
+  gl::ScopedFramebuffer fboScope( mFbo );
+  
   // clear out the FBO with blue
   gl::clear( Color( 0.25, 0.5f, 1.0f ) );
 
+  gl::ScopedViewport viewportScope( ivec2( 0 ), mFbo->getSize() );
   
-  gl::pushViewport();
-  gl::viewport( mFbo->getSize() );
-  gl::pushMatrices();
-  gl::setMatricesWindowPersp( mFbo->getSize() );
+
+//  gl::setMatricesWindowPersp( mFbo->getSize() );
 
   //  gl::setMatrices(fboCam);
-  //  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
+  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
   
   gl::ScopedGlslProg render( mRenderProg );
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
   gl::drawArrays( GL_POINTS, 0, NUM_PARTICLES );
   
-  gl::popMatrices();
-  gl::popViewport();
-  mFbo->unbindFramebuffer();
-
 
 }
 
@@ -304,7 +316,7 @@ void ParticlesApp::draw()
   
   // clear the window to gray
   gl::clear( Color( 0.35f, 0.35f, 0.35f ) );
-  gl::setMatricesWindow( getWindowSize() );
+  gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
   auto tex0 = mFbo->getColorTexture();
   gl::draw( tex0, tex0->getBounds());
 
