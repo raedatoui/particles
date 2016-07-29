@@ -46,17 +46,20 @@ public:
   void update() override;
   void draw() override;
   void keyDown( KeyEvent event ) override;
-  void renderParticlesToFbo();
+  void render();
 
 private:
   gl::GlslProgRef mRenderProg;
   gl::GlslProgRef mUpdateProg;
+  gl::GlslProgRef mShaderBlur;
 
   // Descriptions of particle data layout.
   gl::VaoRef    mAttributes[2];
   // Buffers holding raw particle data on GPU.
   gl::VboRef    mParticleBuffer[2];
   gl::FboRef			mFbo;
+  gl::FboRef mFboBlur1;
+  gl::FboRef mFboBlur2;
 
   // Current source and destination buffers for transform feedback.
   // Source and destination are swapped each frame after update.
@@ -82,6 +85,7 @@ private:
   float attenuation;
   Anim<float> mTexBlend;
   static const int	FBO_WIDTH = 1440, FBO_HEIGHT = 880;
+  static const int BLUR_SIZE = 512;
   int lastFrame;
   int currentFrame;
   float delta;
@@ -186,6 +190,19 @@ void ParticlesApp::setup()
       .attribLocation( "iPixel", 5 )
   );
 
+  mFbo = gl::Fbo::create( FBO_WIDTH, FBO_HEIGHT);
+  mFboBlur1 = gl::Fbo::create( FBO_WIDTH, FBO_HEIGHT );
+  mFboBlur2 = gl::Fbo::create( FBO_WIDTH, FBO_HEIGHT );
+
+  try {
+    mShaderBlur = gl::GlslProg::create( loadAsset( "blur.vert" ), loadAsset( "blur.frag" ) );
+  }
+  catch( const std::exception &e ) {
+    console() << e.what() << endl;
+    quit();
+  }
+  
+  
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
@@ -204,9 +221,6 @@ void ParticlesApp::setup()
     mMouseDown = false;
   });
   
-  mFbo = gl::Fbo::create( FBO_WIDTH, FBO_HEIGHT);
-  gl::enableDepthRead();
-  gl::enableDepthWrite();
 }
 
 void ParticlesApp::keyDown( KeyEvent event )
@@ -254,8 +268,17 @@ void ParticlesApp::update()
     currentFrame = ci::app::getElapsedFrames();
     delta = float(currentFrame - lastFrame)/100.0f;
     mUpdateProg->uniform( "delta", delta);
+    if(attenuation < 3.0f)  {
+      attenuation += 0.05f;
+
+    }
   }
   else {
+    if(attenuation > 0) {
+      attenuation -= 0.1f;
+    } else {
+      attenuation = 0.0f;
+    }
     if(mMouseForce > 0)
       mMouseForce = mMouseForce - 10.0f;
 
@@ -264,7 +287,7 @@ void ParticlesApp::update()
      mUpdateProg->uniform("delta", delta);
     
   }
-  
+
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
   // Bind destination as buffer base.
@@ -287,38 +310,103 @@ void ParticlesApp::update()
   
 }
 
-void ParticlesApp::renderParticlesToFbo()
+void ParticlesApp::render()
 {
-  gl::ScopedFramebuffer fboScope( mFbo );
+
+  gl::pushMatrices();
   
-  // clear out the FBO with blue
-  gl::clear( Color( 0.25, 0.5f, 1.0f ) );
 
   gl::ScopedViewport viewportScope( ivec2( 0 ), mFbo->getSize() );
-  
-
-//  gl::setMatricesWindowPersp( mFbo->getSize() );
-
-  //  gl::setMatrices(fboCam);
+  //  gl::setMatricesWindowPersp( mFbo->getSize() );
   gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
   
+  gl::enableDepthRead();
+  gl::enableDepthWrite();
+
   gl::ScopedGlslProg render( mRenderProg );
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
   gl::drawArrays( GL_POINTS, 0, NUM_PARTICLES );
   
-
+  gl::disableDepthWrite();
+  gl::disableDepthRead();
+  
+  gl::popMatrices();
 }
 
 void ParticlesApp::draw()
 {
-  renderParticlesToFbo();
+  gl::pushMatrices();
+  
+  // render scene into mFboScene using illumination texture
+  {
+    gl::ScopedFramebuffer fbo( mFbo );
+    gl::ScopedViewport    viewport( 0, 0, mFbo->getWidth(), mFbo->getHeight() );
+    
+    gl::setMatricesWindow( FBO_WIDTH, FBO_WIDTH );
+    gl::clear( Color::black() );
+    
+    render();
+  }
+  
+  
+  // bind the blur shader
+  {
+    gl::ScopedGlslProg shader( mShaderBlur );
+    mShaderBlur->uniform( "tex0", 0 ); // use texture unit 0
+    
+    // tell the shader to blur horizontally and the size of 1 pixel
+    mShaderBlur->uniform( "sample_offset", vec2( 1.0f / mFboBlur1->getWidth(), 0.0f ) );
+    mShaderBlur->uniform( "attenuation", attenuation );
+    
+    // copy a horizontally blurred version of our scene into the first blur Fbo
+    {
+      gl::ScopedFramebuffer fbo( mFboBlur1 );
+      gl::ScopedViewport    viewport( 0, 0, mFboBlur1->getWidth(), mFboBlur1->getHeight() );
+      
+      gl::ScopedTextureBind tex0( mFbo->getColorTexture(), (uint8_t)0 );
+      
+      gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
+      gl::clear( Color::black() );
+      
+      gl::drawSolidRect( mFboBlur1->getBounds() );
+    }
+    
+    // tell the shader to blur vertically and the size of 1 pixel
+    mShaderBlur->uniform( "sample_offset", vec2( 0.0f, 1.0f / mFboBlur2->getHeight() ) );
+    mShaderBlur->uniform( "attenuation", attenuation );
+    
+    // copy a vertically blurred version of our blurred scene into the second blur Fbo
+    {
+      gl::ScopedFramebuffer fbo( mFboBlur2 );
+      gl::ScopedViewport    viewport( 0, 0, mFboBlur2->getWidth(), mFboBlur2->getHeight() );
+      
+      gl::ScopedTextureBind tex0( mFboBlur1->getColorTexture(), (uint8_t)0 );
+      
+      gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
+      gl::clear( Color::black() );
+      
+      gl::drawSolidRect( mFboBlur2->getBounds() );
+    }
+  }
+  
+  gl::popMatrices();
+
+  auto tex0 = mFbo->getColorTexture();
+  gl::color( Color::white() );
+  gl::draw( tex0, tex0->getBounds() );
+
+  gl::enableAdditiveBlending();
+  tex0 = mFboBlur2->getColorTexture();
+
+  gl::draw( tex0, tex0->getBounds() );
+  gl::disableAlphaBlending();
   
   // clear the window to gray
-  gl::clear( Color( 0.35f, 0.35f, 0.35f ) );
-  gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
-  auto tex0 = mFbo->getColorTexture();
-  gl::draw( tex0, tex0->getBounds());
+//  gl::clear( Color( 0.35f, 0.35f, 0.35f ) );
+//  gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
+//  auto tex0 = mFbo->getColorTexture();
+//  gl::draw( tex0, tex0->getBounds());
 
   
 }
