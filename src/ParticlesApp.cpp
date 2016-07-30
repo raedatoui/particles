@@ -39,6 +39,8 @@ public:
   void resize() override;
   void keyDown( KeyEvent event ) override;
   void render();
+  void randomize();
+  void reset();
 
 private:
   gl::GlslProgRef mRenderProg;
@@ -82,6 +84,8 @@ private:
   int lastFrame;
   int currentFrame;
   float delta;
+  int counter = 0;
+
   CameraPersp mCamera;
   CameraUi mCamUi;
 };
@@ -229,20 +233,31 @@ void ParticlesApp::keyDown( KeyEvent event )
   }
 
   if (event.getChar() == 'a') {
-//    vec3 ball = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
-//    timeline().apply( &mMousePosition, ball, 1.0f, EaseInCubic() );
-//    
-//    float force = randFloat()*500.0f;
-//    timeline().apply( &mMouseForce, force, 1.0f, EaseInCubic() );
-    timeline().apply( &mTexBlend, 1.0f, 1.0f, EaseInCubic() );
+    randomize();
   }
 
   if (event.getChar() == 'b') {
-    timeline().apply( &mTexBlend, 0.5f, 1.0f, EaseInCubic() );
+    reset();
   }
   
 }
 
+void ParticlesApp::randomize() {
+//  vec3 ball = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
+//  timeline().apply( &mMousePosition, ball, 0.5f, EaseInCubic() );
+  mMousePosition = vec3( randFloat()*mWidth, randFloat()*mHeight, 0.0f );
+  mMouseDown = true;
+  //    float force = randFloat()*500.0f;
+  //    timeline().apply( &mMouseForce, force, 0.2f, EaseInCubic() );
+
+  //    timeline().apply( &mTexBlend, 1.0f, 1.0f, EaseInCubic() );
+}
+
+void ParticlesApp::reset() {
+  mMouseDown = false;
+  //    mMouseForce = 0.0f;
+  //    timeline().apply( &mTexBlend, 0.5f, 1.0f, EaseInCubic() );
+}
 
 void ParticlesApp::update()
 {
@@ -260,12 +275,12 @@ void ParticlesApp::update()
   
   
   if (mMouseDown) {
-    mMouseForce = mMouseForce + 10.0f;
+    mMouseForce = mMouseForce + 0.5f;
     currentFrame = ci::app::getElapsedFrames();
-    delta = float(currentFrame - lastFrame)/100.0f;
+    delta = float(currentFrame - lastFrame)/400.0f;
     mUpdateProg->uniform( "delta", delta);
     if(attenuation < 3.0f)  {
-      attenuation += 0.05f;
+      attenuation += 0.1f;
 
     }
   }
@@ -275,15 +290,26 @@ void ParticlesApp::update()
     } else {
       attenuation = 0.0f;
     }
-    if(mMouseForce > 0)
-      mMouseForce = mMouseForce - 10.0f;
-
+//    if(mMouseForce > 0)
+//      mMouseForce = mMouseForce - 10.0f;
+//    if(mMouseForce < 0.0f)
+//      mMouseForce = 0.0f;
+    mMouseForce = 0.0f;
+    
      lastFrame = ci::app::getElapsedFrames();
      delta -= 0.01f;
      mUpdateProg->uniform("delta", delta);
     
   }
-
+  
+  if(counter == 20*3) {
+    reset();
+    counter = 0;
+  }
+  else if(counter == 5*3 || counter == 7*3 || counter == 10*3 || counter == 13*3 || counter == 15*3 ) {
+    randomize();
+  }
+  counter += 1;
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
   // Bind destination as buffer base.
@@ -314,8 +340,8 @@ void ParticlesApp::render()
 
   gl::ScopedViewport viewportScope( ivec2( 0 ), mFbo->getSize() );
   //  gl::setMatricesWindowPersp( mFbo->getSize() );
-//  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
-  gl::setMatrices(mCamera);
+  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
+//  gl::setMatrices(mCamera);
   gl::ScopedDepth enableDepth( true );
   
   gl::enableDepthRead();

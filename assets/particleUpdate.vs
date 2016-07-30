@@ -23,7 +23,7 @@ out vec4  color;
 out vec2  pixel;
 
 const float dt2 = 1.0 / (60.0 * 60.0);
-
+const vec3 magenta = vec3(239.0f/259,3.0f/255.0f,137.0f/255.0f);
 
 #include "./PhotoshopMathFP.glsl"
 
@@ -69,11 +69,10 @@ void main()
     pposition = position;
     vec3 acc = (home - position) * 128.0f;
     if( uMouseForce > 0.0 ) {
-      color.rgb = mix(vec3(1.0,0.0,0.0), color.rgb, 1.0 - acc * dt2);
-      color.a = 0.5;
+      color.rgb = mix(magenta, color.rgb, 0.2);
     }
     position += acc * dt2;
-    position.z = 200.0f * (acc.x + acc.y) * dt2;
+    position.z = 100.0f * (acc.x - acc.y) * dt2;
   }
 
 
