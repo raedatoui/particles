@@ -34,5 +34,5 @@ void main()
 	sum += texture( tex0, vTexCoord0 + +10.0 * sample_offset ).rgb * 0.009167927656011385;
 
 	oColor.rgb = attenuation * sum;
-	oColor.a = 0.5;
+	oColor.a = 0.8;
 }
