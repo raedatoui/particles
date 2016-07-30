@@ -36,6 +36,7 @@ public:
   void setup() override;
   void update() override;
   void draw() override;
+  void resize() override;
   void keyDown( KeyEvent event ) override;
   void render();
 
@@ -89,7 +90,7 @@ private:
 void ParticlesApp::setup()
 {
   mCamera = CameraPersp( FBO_WIDTH, FBO_HEIGHT, 45.0f, 5.0f, 2000.0f );
-  mCamera.setPerspective(  75.0f, FBO_WIDTH/FBO_HEIGHT, 5.0f, 2000.0f );
+  mCamera.setPerspective(  75.0f, getWindowAspectRatio(), 5.0f, 2000.0f );
 //  mCamera.lookAt( vec3( 0.0f, 0.0f, 10.0f), vec3( FBO_WIDTH/2, FBO_HEIGHT/2, 0.0f));
   mCamUi = CameraUi( &mCamera, getWindow(), -1 );
 
@@ -315,6 +316,8 @@ void ParticlesApp::render()
   //  gl::setMatricesWindowPersp( mFbo->getSize() );
 //  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
   gl::setMatrices(mCamera);
+  gl::ScopedDepth enableDepth( true );
+  
   gl::enableDepthRead();
   gl::enableDepthWrite();
 
@@ -386,7 +389,7 @@ void ParticlesApp::draw()
   }
   
   gl::popMatrices();
-
+//  gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
   auto tex0 = mFbo->getColorTexture();
   gl::color( Color::white() );
   gl::draw( tex0, tex0->getBounds() );
@@ -406,6 +409,12 @@ void ParticlesApp::draw()
   
 }
 
+
+void ParticlesApp::resize()
+{
+  mCamera.setAspectRatio( getWindowAspectRatio() );
+  
+}
 
 CINDER_APP( ParticlesApp, RendererGl, [] ( App::Settings *settings ) {
   settings->setWindowSize( 	1440, 880 );

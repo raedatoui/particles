@@ -70,9 +70,10 @@ void main()
     vec3 acc = (home - position) * 128.0f;
     if( uMouseForce > 0.0 ) {
       color.rgb = mix(vec3(1.0,0.0,0.0), color.rgb, 1.0 - acc * dt2);
+      color.a = 0.5;
     }
     position += acc * dt2;
-    position.z = 20.0f; //(acc.x + acc.y) * dt2;
+    position.z = 200.0f * (acc.x + acc.y) * dt2;
   }
 
 
