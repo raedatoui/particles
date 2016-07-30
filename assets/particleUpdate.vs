@@ -72,6 +72,7 @@ void main()
       color.rgb = mix(vec3(1.0,0.0,0.0), color.rgb, 1.0 - acc * dt2);
     }
     position += acc * dt2;
+    position.z = 20.0f; //(acc.x + acc.y) * dt2;
   }
 
 

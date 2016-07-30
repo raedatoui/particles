@@ -1,18 +1,9 @@
-//
-//  Copyright (c) 2014 David Wicks, sansumbrella.com
-//  All rights reserved.
-//
-//  Particle Sphere sample application, GPU integration.
-//
-//  Author: David Wicks
-//  License: BSD Simplified
-//
-
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/Rand.h"
 #include "cinder/gl/gl.h"
 #include "cinder/Timeline.h"
+#include "cinder/CameraUi.h"
 
 using namespace ci;
 using namespace ci::app;
@@ -57,7 +48,8 @@ private:
   gl::VaoRef    mAttributes[2];
   // Buffers holding raw particle data on GPU.
   gl::VboRef    mParticleBuffer[2];
-  gl::FboRef			mFbo;
+
+  gl::FboRef mFbo;
   gl::FboRef mFboBlur1;
   gl::FboRef mFboBlur2;
 
@@ -72,29 +64,34 @@ private:
   vec3      mMousePos = vec3( 0, 0, 0 );
   
   int       NUM_PARTICLES = 0;
-  Surface32f		mImage;
-  Surface32f		mImage2;
+  Surface32f    mImage;
+  Surface32f    mImage2;
   int32_t mWidth;
   int32_t mHeight;
-  gl::Texture2dRef		mTex;
-  gl::Texture2dRef		mTex2;
+  gl::Texture2dRef mTex;
+  gl::Texture2dRef mTex2;
   
   vector<Particle> particles;
   float pointSize = 1.0f;
   Anim<vec3> mMousePosition;
   float attenuation;
   Anim<float> mTexBlend;
-  static const int	FBO_WIDTH = 1440, FBO_HEIGHT = 880;
+  static const int FBO_WIDTH = 1440, FBO_HEIGHT = 880;
   static const int BLUR_SIZE = 512;
   int lastFrame;
   int currentFrame;
   float delta;
-
+  CameraPersp mCamera;
+  CameraUi mCamUi;
 };
 
 
 void ParticlesApp::setup()
 {
+  mCamera = CameraPersp( FBO_WIDTH, FBO_HEIGHT, 45.0f, 5.0f, 2000.0f );
+  mCamera.setPerspective(  75.0f, FBO_WIDTH/FBO_HEIGHT, 5.0f, 2000.0f );
+//  mCamera.lookAt( vec3( 0.0f, 0.0f, 10.0f), vec3( FBO_WIDTH/2, FBO_HEIGHT/2, 0.0f));
+  mCamUi = CameraUi( &mCamera, getWindow(), -1 );
 
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
   mWidth = mImage.getWidth();
@@ -230,17 +227,15 @@ void ParticlesApp::keyDown( KeyEvent event )
     gl::pointSize( pointSize );
   }
 
-
   if (event.getChar() == 'a') {
 //    vec3 ball = vec3(randFloat()*mWidth, randFloat()*mHeight, 0.0);
 //    timeline().apply( &mMousePosition, ball, 1.0f, EaseInCubic() );
 //    
 //    float force = randFloat()*500.0f;
 //    timeline().apply( &mMouseForce, force, 1.0f, EaseInCubic() );
-    
-    
     timeline().apply( &mTexBlend, 1.0f, 1.0f, EaseInCubic() );
   }
+
   if (event.getChar() == 'b') {
     timeline().apply( &mTexBlend, 0.5f, 1.0f, EaseInCubic() );
   }
@@ -318,8 +313,8 @@ void ParticlesApp::render()
 
   gl::ScopedViewport viewportScope( ivec2( 0 ), mFbo->getSize() );
   //  gl::setMatricesWindowPersp( mFbo->getSize() );
-  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
-  
+//  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
+  gl::setMatrices(mCamera);
   gl::enableDepthRead();
   gl::enableDepthWrite();
 
