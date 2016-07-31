@@ -75,7 +75,7 @@ private:
   gl::Texture2dRef mTex2;
   
   vector<Particle> particles;
-  float pointSize = 1.0f;
+  float pointSize = 2.0f;
   Anim<vec3> mMousePosition;
   float attenuation;
   Anim<float> mTexBlend;
@@ -275,7 +275,7 @@ void ParticlesApp::update()
   
   
   if (mMouseDown) {
-    mMouseForce = mMouseForce + 0.5f;
+    mMouseForce = mMouseForce + 1.0f;
     currentFrame = ci::app::getElapsedFrames();
     delta = float(currentFrame - lastFrame)/400.0f;
     mUpdateProg->uniform( "delta", delta);
@@ -302,13 +302,15 @@ void ParticlesApp::update()
     
   }
   
-  if(counter == 20*3) {
-    reset();
-    counter = 0;
-  }
-  else if(counter == 5*3 || counter == 7*3 || counter == 10*3 || counter == 13*3 || counter == 15*3 ) {
+  if(counter > 600 && counter % 10 ==0) {
     randomize();
+    if(counter == 1000)
+      counter = 0;
   }
+  if(counter == 100) {
+    reset();
+  }
+//
   counter += 1;
   // Bind the source data (Attributes refer to specific buffers).
   gl::ScopedVao source( mAttributes[mSourceIndex] );
