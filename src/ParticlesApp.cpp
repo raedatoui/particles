@@ -93,9 +93,20 @@ private:
 
 void ParticlesApp::setup()
 {
-  mCamera = CameraPersp( FBO_WIDTH, FBO_HEIGHT, 45.0f, 5.0f, 2000.0f );
-  mCamera.setPerspective(  75.0f, getWindowAspectRatio(), 5.0f, 2000.0f );
-//  mCamera.lookAt( vec3( 0.0f, 0.0f, 10.0f), vec3( FBO_WIDTH/2, FBO_HEIGHT/2, 0.0f));
+  DataSourceRef src = DataSourcePath::create(getAppPath() / "model2.txt");
+  auto stream = src->createStream();
+  std::vector<vec3> samplesList;
+  uint32_t numVertices = 0;
+  stream->readLittle( &numVertices );
+  samplesList.resize( numVertices );
+  stream->readData( (void*) samplesList.data(), numVertices * sizeof( vec3 ) );
+
+//  mCamera = CameraPersp( FBO_WIDTH, FBO_HEIGHT, 45.0f, 5.0f, 2000.0f );
+//  mCamera.setPerspective(  75.0f, getWindowAspectRatio(), 5.0f, 2000.0f );
+////  mCamera.lookAt( vec3( 0.0f, 0.0f, 10.0f), vec3( FBO_WIDTH/2, FBO_HEIGHT/2, 0.0f));
+//  mCamUi = CameraUi( &mCamera, getWindow(), -1 );
+
+  mCamera	= CameraPersp( getWindowWidth(), getWindowHeight(), 60, 0.1, 1000 ).calcFraming( Sphere( vec3(0), 1 ) );
   mCamUi = CameraUi( &mCamera, getWindow(), -1 );
 
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
@@ -133,7 +144,7 @@ void ParticlesApp::setup()
         int index = j + (i-1)*mWidth - 1;
           auto &p = particles.at(index );
           p.pos = vec3(j,i,0);
-          p.home = p.pos;
+          p.home = samplesList[index]; //p.pos;
           p.ppos = p.home + Rand::randVec3() * 10.0f; // random initial velocity
           p.damping = Rand::randFloat( 0.000965f, 0.000985f );
           p.pixel = vec2(float(j)/float(mWidth),1.0-float(i)/float(mHeight));
@@ -302,14 +313,14 @@ void ParticlesApp::update()
     
   }
   
-  if(counter > 600 && counter % 10 ==0) {
-    randomize();
-    if(counter == 1000)
-      counter = 0;
-  }
-  if(counter == 100) {
-    reset();
-  }
+//  if(counter > 600 && counter % 10 ==0) {
+//    randomize();
+//    if(counter == 1000)
+//      counter = 0;
+//  }
+//  if(counter == 100) {
+//    reset();
+//  }
 //
   counter += 1;
   // Bind the source data (Attributes refer to specific buffers).
@@ -342,8 +353,8 @@ void ParticlesApp::render()
 
   gl::ScopedViewport viewportScope( ivec2( 0 ), mFbo->getSize() );
   //  gl::setMatricesWindowPersp( mFbo->getSize() );
-  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
-//  gl::setMatrices(mCamera);
+//  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
+  gl::setMatrices(mCamera);
   gl::ScopedDepth enableDepth( true );
   
   gl::enableDepthRead();

@@ -72,7 +72,7 @@ void main()
       color.rgb = mix(magenta, color.rgb, 0.2);
     }
     position += acc * dt2;
-    position.z = 50.0f * (acc.x - acc.y) * dt2;
+//    position.z = 50.0f * (acc.x - acc.y) * dt2;
   }
 
 
