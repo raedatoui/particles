@@ -65,7 +65,7 @@ private:
   bool      mMouseDown = false;
   Anim<float>     mMouseForce;
   vec3      mMousePos = vec3( 0, 0, 0 );
-  
+
   int       NUM_PARTICLES = 0;
   Surface32f    mImage;
   Surface32f    mImage2;
@@ -73,7 +73,7 @@ private:
   int32_t mHeight;
   gl::Texture2dRef mTex;
   gl::Texture2dRef mTex2;
-  
+
   vector<Particle> particles;
   float pointSize = 2.0f;
   Anim<vec3> mMousePosition;
@@ -101,40 +101,36 @@ void ParticlesApp::setup()
   samplesList.resize( numVertices );
   stream->readData( (void*) samplesList.data(), numVertices * sizeof( vec3 ) );
 
-//  mCamera = CameraPersp( FBO_WIDTH, FBO_HEIGHT, 45.0f, 5.0f, 2000.0f );
-//  mCamera.setPerspective(  75.0f, getWindowAspectRatio(), 5.0f, 2000.0f );
-////  mCamera.lookAt( vec3( 0.0f, 0.0f, 10.0f), vec3( FBO_WIDTH/2, FBO_HEIGHT/2, 0.0f));
-//  mCamUi = CameraUi( &mCamera, getWindow(), -1 );
-
-  mCamera	= CameraPersp( getWindowWidth(), getWindowHeight(), 60, 0.1, 1000 ).calcFraming( Sphere( vec3(0), 1 ) );
-  mCamUi = CameraUi( &mCamera, getWindow(), -1 );
+  mCamera.lookAt( vec3( 2.0f, 3.0f, 1.0f ), vec3( 0 ) );
+  mCamera.setPerspective( 40.0f, getWindowAspectRatio(), 0.01f, 100.0f );
+  mCamUi = CameraUi( &mCamera, getWindow() );
 
   mImage = loadImage( loadAsset( "textures/h1.jpg" ) );
   mWidth = mImage.getWidth();
   mHeight = mImage.getHeight();
-  
-  
+
+
   float midH = float(mHeight)/2.0;
   float sliceHalfWidth = float(mWidth)/20.0;
   mMousePosition = vec3(mWidth/10.0 * 5.0 + sliceHalfWidth, midH, 0.0f );
   mMouseForce = 0;
-  
-  
+
+
   mTex = gl::Texture2d::create( mImage );
   mTex->bind(0);
-  
+
 
   mImage2 = loadImage( loadAsset( "textures/h2.jpg" ) );
   mTex2 = gl::Texture2d::create( mImage2 );
   mTex2->bind(1);
-  
+
   NUM_PARTICLES = mWidth * mHeight;
 
   // Create initial particle layout.
   // How many particles to create. (600k default)
   particles.assign( NUM_PARTICLES, Particle() );
-  
-  
+
+
   int i = 0;
   int j = 0;
 
@@ -155,7 +151,7 @@ void ParticlesApp::setup()
   catch( ci::Exception &exc ) {
     console() << i << j << " failed to load doc, what: " << exc.what() << endl;
   }
-  
+
   // Create particle buffers on GPU and copy data into the first buffer.
   // Mark as static since we only write from the CPU once.
   mParticleBuffer[mSourceIndex] = gl::Vbo::create( GL_ARRAY_BUFFER, particles.size() * sizeof(Particle), particles.data(), GL_STATIC_DRAW );
@@ -191,7 +187,7 @@ void ParticlesApp::setup()
   mRenderProg = gl::GlslProg::create( gl::GlslProg::Format()
                   .vertex( loadAsset( "draw.vert" ) )
                   .fragment( loadAsset( "draw.frag" ) ) );
-  
+
   mUpdateProg = gl::GlslProg::create( gl::GlslProg::Format().vertex( loadAsset( "particleUpdate.vs" )  )
       .feedbackFormat( GL_INTERLEAVED_ATTRIBS )
       .feedbackVaryings( { "position", "pposition", "home", "color", "damping", "pixel" } )
@@ -214,8 +210,8 @@ void ParticlesApp::setup()
     console() << e.what() << endl;
     quit();
   }
-  
-  
+
+
   // Listen to mouse events so we can send data as uniforms.
   getWindow()->getSignalMouseDown().connect( [this]( MouseEvent event )
   {
@@ -233,7 +229,7 @@ void ParticlesApp::setup()
     mMouseForce = 0.0f;
     mMouseDown = false;
   });
-  
+
 }
 
 void ParticlesApp::keyDown( KeyEvent event )
@@ -250,7 +246,7 @@ void ParticlesApp::keyDown( KeyEvent event )
   if (event.getChar() == 'b') {
     reset();
   }
-  
+
 }
 
 void ParticlesApp::randomize() {
@@ -272,19 +268,19 @@ void ParticlesApp::reset() {
 
 void ParticlesApp::update()
 {
-  
+
   // Update particles on the GPU
   gl::ScopedGlslProg prog( mUpdateProg );
   gl::ScopedState rasterizer( GL_RASTERIZER_DISCARD, true );  // turn off fragment stage
 
-  
+
   mUpdateProg->uniform( "uMouseForce", mMouseForce.value());
   mUpdateProg->uniform( "uMousePosition", mMousePosition.value());
   mUpdateProg->uniform( "uTex", 0);
   mUpdateProg->uniform( "uTex2", 1);
   mUpdateProg->uniform( "uTexBlend", mTexBlend.value());
-  
-  
+
+
   if (mMouseDown) {
     mMouseForce = mMouseForce + 1.0f;
     currentFrame = ci::app::getElapsedFrames();
@@ -306,13 +302,13 @@ void ParticlesApp::update()
 //    if(mMouseForce < 0.0f)
 //      mMouseForce = 0.0f;
     mMouseForce = 0.0f;
-    
+
      lastFrame = ci::app::getElapsedFrames();
      delta -= 0.01f;
      mUpdateProg->uniform("delta", delta);
-    
+
   }
-  
+
 //  if(counter > 600 && counter % 10 ==0) {
 //    randomize();
 //    if(counter == 1000)
@@ -336,27 +332,27 @@ void ParticlesApp::update()
 
   // Swap source and destination for next loop
   std::swap( mSourceIndex, mDestinationIndex );
-  
+
 
 //  else {
 //    if(mMouseForce >= 0)
 //      mMouseForce = mMouseForce - 10.0f;
 //  }
-  
+
 }
 
 void ParticlesApp::render()
 {
 
   gl::pushMatrices();
-  
+
 
   gl::ScopedViewport viewportScope( ivec2( 0 ), mFbo->getSize() );
   //  gl::setMatricesWindowPersp( mFbo->getSize() );
 //  gl::setMatricesWindow(FBO_WIDTH, FBO_HEIGHT);
   gl::setMatrices(mCamera);
   gl::ScopedDepth enableDepth( true );
-  
+
   gl::enableDepthRead();
   gl::enableDepthWrite();
 
@@ -364,69 +360,69 @@ void ParticlesApp::render()
   gl::ScopedVao vao( mAttributes[mSourceIndex] );
   gl::context()->setDefaultShaderVars();
   gl::drawArrays( GL_POINTS, 0, NUM_PARTICLES );
-  
+
   gl::disableDepthWrite();
   gl::disableDepthRead();
-  
+
   gl::popMatrices();
 }
 
 void ParticlesApp::draw()
 {
   gl::pushMatrices();
-  
+
   // render scene into mFboScene using illumination texture
   {
     gl::ScopedFramebuffer fbo( mFbo );
     gl::ScopedViewport    viewport( 0, 0, mFbo->getWidth(), mFbo->getHeight() );
-    
+
     gl::setMatricesWindow( FBO_WIDTH, FBO_WIDTH );
     gl::clear( Color::black() );
-    
+
     render();
   }
-  
-  
+
+
   // bind the blur shader
   {
     gl::ScopedGlslProg shader( mShaderBlur );
     mShaderBlur->uniform( "tex0", 0 ); // use texture unit 0
-    
+
     // tell the shader to blur horizontally and the size of 1 pixel
     mShaderBlur->uniform( "sample_offset", vec2( 1.0f / mFboBlur1->getWidth(), 0.0f ) );
     mShaderBlur->uniform( "attenuation", attenuation );
-    
+
     // copy a horizontally blurred version of our scene into the first blur Fbo
     {
       gl::ScopedFramebuffer fbo( mFboBlur1 );
       gl::ScopedViewport    viewport( 0, 0, mFboBlur1->getWidth(), mFboBlur1->getHeight() );
-      
+
       gl::ScopedTextureBind tex0( mFbo->getColorTexture(), (uint8_t)0 );
-      
+
       gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
       gl::clear( Color::black() );
-      
+
       gl::drawSolidRect( mFboBlur1->getBounds() );
     }
-    
+
     // tell the shader to blur vertically and the size of 1 pixel
     mShaderBlur->uniform( "sample_offset", vec2( 0.0f, 1.0f / mFboBlur2->getHeight() ) );
     mShaderBlur->uniform( "attenuation", attenuation );
-    
+
     // copy a vertically blurred version of our blurred scene into the second blur Fbo
     {
       gl::ScopedFramebuffer fbo( mFboBlur2 );
       gl::ScopedViewport    viewport( 0, 0, mFboBlur2->getWidth(), mFboBlur2->getHeight() );
-      
+
       gl::ScopedTextureBind tex0( mFboBlur1->getColorTexture(), (uint8_t)0 );
-      
+
       gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
       gl::clear( Color::black() );
-      
+
       gl::drawSolidRect( mFboBlur2->getBounds() );
     }
   }
-  
+
   gl::popMatrices();
 //  gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
   auto tex0 = mFbo->getColorTexture();
@@ -438,7 +434,7 @@ void ParticlesApp::draw()
 
   gl::draw( tex0, tex0->getBounds() );
   gl::disableAlphaBlending();
-  
+
   // clear the window to gray
 //  gl::clear( Color( 0.35f, 0.35f, 0.35f ) );
 //  gl::setMatricesWindow( FBO_WIDTH, FBO_HEIGHT );
