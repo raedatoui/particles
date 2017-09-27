@@ -40,3 +40,6 @@ docs/*/node_modules
 *.pyc
 
 assets/textures/*
+
+# jetbrains
+xcode/.idea/*
